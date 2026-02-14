@@ -116,7 +116,7 @@ switch (mqttQos) {
 const aldesLogin = args.u;
 const aldesPassword = args.p;
 let scanIterval = parseInt(args['scan-interval'], 10);
-isNaN(scanIterval) || scanIterval < 1 ? 30 : scanIterval;
+scanIterval = (isNaN(scanIterval) || scanIterval < 1) ? 30 : scanIterval;
 const haDiscovery = args['ha-discovery'] === '1' || args['ha-discovery']?.toLowerCase() === 'true';
 const haPrefix = (args['ha-prefix'] || 'homeassistant');
 console.log('Config:', `
@@ -273,15 +273,25 @@ function getMode(details) {
     }
     return device.prevMode;
 }
+const planningAllowed = new Set(['daily', 'vacation', 'boost']);
+const toPlanningValue = (v) => {
+    // si on reçoit un truc non supporté, on retombe sur daily
+    if (!v)
+        return 'daily';
+    if (planningAllowed.has(v))
+        return v;
+    return 'daily';
+};
 function getWeekPlanning(details) {
     const device = devices[details.serial_number];
     const find = (key) => {
         for (const c of details.week_planning) {
             if (c.command.startsWith(key)) {
-                return modeMapping[c.command[2]] ?? 'V';
+                const v = modeMapping[c.command[2]]; // A/Z/V/W/Y -> string
+                return toPlanningValue(v);
             }
         }
-        return 'V';
+        return 'daily';
     };
     const build = (day) => {
         return {
